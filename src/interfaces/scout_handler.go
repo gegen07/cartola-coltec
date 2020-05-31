@@ -13,13 +13,11 @@ import (
 
 type ScoutHandler struct {
 	ScoutApplication application.ScoutApplicationInterface
-	PositionApplication application.PositionApplicationInterface
 }
 
-func NewScoutHandler(scoutApplication application.ScoutApplicationInterface, positionApplication application.PositionApplicationInterface) *ScoutHandler {
+func NewScoutHandler(scoutApplication application.ScoutApplicationInterface) *ScoutHandler {
 	return &ScoutHandler{
 		ScoutApplication: scoutApplication,
-		PositionApplication: positionApplication,
 	}
 }
 
@@ -30,8 +28,15 @@ func (handler *ScoutHandler) GetAllScouts(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "application/json")
 
+	key := r.FormValue("page")
+	page, err := strconv.Atoi(key)
+
+	if err != nil {
+		return errors.NewHTTPError(err, 400, "Invalid Parameter")
+	}
+
 	var scouts scout.Scouts
-	scouts, err := handler.ScoutApplication.GetAll()
+	scouts, err = handler.ScoutApplication.GetAll(r.Context(), page)
 
 	if err != nil {
 		return fmt.Errorf("DB error: %v", err)
@@ -57,7 +62,7 @@ func (handler *ScoutHandler) GetScoutByID(w http.ResponseWriter, r *http.Request
 		return errors.NewHTTPError(err, 400, "Invalid JSON")
 	}
 
-	scout, err := handler.ScoutApplication.GetByID(id)
+	scout, err := handler.ScoutApplication.GetByID(r.Context(), id)
 
 	if err != nil {
 		return fmt.Errorf("DB error: %v", err)
@@ -74,16 +79,14 @@ func (handler *ScoutHandler) Insert(w http.ResponseWriter, r *http.Request) erro
 		return errors.NewHTTPError(nil, http.StatusMethodNotAllowed, "Method Not Allowed")
 	}
 
-	var scout scout.Scout
+	var scout scout.RequestScout
 	err := json.NewDecoder(r.Body).Decode(&scout)
 
 	if err != nil {
 		return errors.NewHTTPError(err, http.StatusBadRequest, "Invalid JSON")
 	}
 
-	position, err := handler.PositionApplication.GetById(scout.ID)
-	err = handler.PositionApplication.AppendScoutAssociation(position, &scout)
-	s, err := handler.ScoutApplication.Insert(&scout)
+	s, err := handler.ScoutApplication.Insert(r.Context(), &scout)
 
 	if err != nil {
 		return fmt.Errorf("DB Error: %v", err)
@@ -114,7 +117,7 @@ func (handler *ScoutHandler) Update(w http.ResponseWriter, r *http.Request) erro
 		return errors.NewHTTPError(err, http.StatusBadRequest, "Invalid JSON")
 	}
 
-	s, err := handler.ScoutApplication.Update(&scout)
+	s, err := handler.ScoutApplication.Update(r.Context(), &scout)
 
 	if err != nil {
 		return fmt.Errorf("DB Error: %v", err)
@@ -137,7 +140,7 @@ func (handler *ScoutHandler) Delete(w http.ResponseWriter, r *http.Request) erro
 		return errors.NewHTTPError(err, http.StatusBadRequest, "Invalid JSON")
 	}
 
-	err = handler.ScoutApplication.Delete(id)
+	err = handler.ScoutApplication.Delete(r.Context(), id)
 
 	if err != nil {
 		return fmt.Errorf("DB Error: %v", err)

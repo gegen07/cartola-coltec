@@ -1,16 +1,18 @@
 package persistence
 
 import (
+	"context"
+	"database/sql"
+	"fmt"
 	"github.com/gegen07/cartola-university/domain/entity/scout"
 	"github.com/gegen07/cartola-university/domain/repository"
-	"github.com/jinzhu/gorm"
 )
 
 type PositionRepository struct {
-	db *gorm.DB
+	db *sql.DB
 }
 
-func NewPositionRepository(db *gorm.DB) *PositionRepository {
+func NewPositionRepository(db *sql.DB) *PositionRepository {
 	return &PositionRepository{
 		db: db,
 	}
@@ -18,9 +20,49 @@ func NewPositionRepository(db *gorm.DB) *PositionRepository {
 
 var _ repository.PositionRepository = &PositionRepository{}
 
-func (p PositionRepository) GetAll(args ...interface{}) ([]scout.Position, error) {
-	var positions []scout.Position
-	err := p.db.Debug().Preload("Scouts").Find(&positions).Error
+func (p PositionRepository) fetch(ctx context.Context, query string, args ...interface{}) ([]scout.Position, error) {
+	positions := make([]scout.Position, 0)
+
+	stmt, err := p.db.PrepareContext(ctx, query)
+
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := stmt.QueryContext(ctx, args...)
+	defer rows.Close()
+
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		p := scout.Position{}
+
+		err := rows.Scan(
+			&p.ID,
+			&p.Description,
+			&p.CreatedAt,
+			&p.UpdatedAt,
+			)
+
+		if err != nil {
+			return nil, err
+		}
+
+		positions = append(positions, p)
+	}
+
+	return positions, nil
+}
+
+func (p PositionRepository) GetAll(ctx context.Context, page int) ([]scout.Position, error) {
+	limit := 10
+	offset := (page-1) * limit
+
+	query := `SELECT p.id, p.description, p.created_at, p.updated_at FROM positions p LIMIT $1 OFFSET $2`
+
+	positions, err := p.fetch(ctx, query, limit, offset)
 
 	if err != nil {
 		return nil, err
@@ -29,20 +71,35 @@ func (p PositionRepository) GetAll(args ...interface{}) ([]scout.Position, error
 	return positions, nil
 }
 
-func (p PositionRepository) GetById(id uint64) (*scout.Position, error) {
-	var position scout.Position
+func (p PositionRepository) GetById(ctx context.Context, id uint64) (*scout.Position, error) {
+	query := `SELECT id, description, created_at, updated_at FROM positions WHERE id = $1`
 
-	err := p.db.Debug().Preload("Scouts").Where("id = ?", id).Take(&position).Error
+	positions, err := p.fetch(ctx, query, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(positions) > 1 {
+		//TODO error
+	}
+
+	return &positions[0], nil
+}
+
+func (p PositionRepository) Insert(ctx context.Context, position *scout.Position) (*scout.Position, error) {
+	query := `INSERT INTO positions (description, created_at, updated_at) 
+				VALUES ($1, $2, $3) RETURNING id`
+
+	stmt, err := p.db.PrepareContext(ctx, query)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return &position, nil
-}
-
-func (p PositionRepository) Insert(position *scout.Position) (*scout.Position, error) {
-	err := p.db.Debug().Create(position).Error
+	err = stmt.QueryRowContext(ctx,
+		position.Description,
+		position.CreatedAt,
+		position.UpdatedAt).Scan(&position.ID)
 
 	if err != nil {
 		return nil, err
@@ -51,26 +108,56 @@ func (p PositionRepository) Insert(position *scout.Position) (*scout.Position, e
 	return position, nil
 }
 
-func (p PositionRepository) AppendScoutAssociation(position *scout.Position, scout *scout.Scout) error {
-	err := p.db.Debug().Model(position).Association("Scouts").Append(scout).Error
+func (p PositionRepository) Update(ctx context.Context, position *scout.Position) (*scout.Position, error) {
+	query := `UPDATE positions SET (description, updated_at) = ($1, $2) WHERE id=$3`
 
-	return err
-}
-
-func (p PositionRepository) Update(position *scout.Position) (*scout.Position, error) {
-	err := p.db.Debug().Save(position).Error
+	stmt, err := p.db.PrepareContext(ctx, query)
 
 	if err != nil {
+		return nil, err
+	}
+
+	res, err := stmt.ExecContext(ctx,
+		position.Description,
+		position.UpdatedAt,
+		position.ID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected != 1 {
+		err = fmt.Errorf("Weird Behavior %d", rowsAffected)
 		return nil, err
 	}
 
 	return position, nil
 }
 
-func (p PositionRepository) Delete(id uint64) error {
-	err := p.db.Debug().Where("id = ?", id).Delete(&scout.Position{}).Error
+func (p PositionRepository) Delete(ctx context.Context, id uint64) error {
+	query := `DELETE FROM positions WHERE id=$1`
+
+	stmt, err := p.db.PrepareContext(ctx, query)
 
 	if err != nil {
+		return err
+	}
+
+	res, err := stmt.ExecContext(ctx, id)
+
+	if err != nil {
+		return nil
+	}
+
+	rowsAffected, err := res.RowsAffected()
+
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected != 1 {
+		err = fmt.Errorf("Weird Behavior %d", rowsAffected)
 		return err
 	}
 

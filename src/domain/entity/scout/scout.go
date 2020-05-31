@@ -6,19 +6,29 @@ import (
 
 // Scout struct represents the stats of each player
 type Scout struct {
-	ID           	uint64 `gorm:"primary_key;auto_increment" json:"id"`
-	PositionId		uint64 `gorm:"column:position_id" json:"position_id"`
-	Description  	string `gorm:"not null" json:"description"`
-	Points       	float64 `gorm:"not null" json:"points"`
-	CreatedAt    	time.Time  `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt 		time.Time  `gorm:"default:CURRENT_TIMESTAMP" json:"updated_at"`
+	ID           	uint64
+	Description  	string
+	Scout 			string
+	Points       	float64
+	Positions		[]Position
+	CreatedAt    	time.Time
+	UpdatedAt 		time.Time
+}
+
+type RequestScout struct {
+	ID           	uint64 `json:"id"`
+	Description  	string `json:"description"`
+	Scout 			string `json:"scout"`
+	Points       	float64 `json:"points"`
+	PositionsID		[]uint64 `json:"positions_id"`
 }
 
 type PublicScout struct {
-	ID          uint64 `gorm:"primary_key;auto_increment" json:"id"`
-	Description string `gorm:"not null" json:"description"`
-	Points      float64 `gorm:"not null" json:"points"`
-	PositionID	uint64 `gorm:"column:position_id" json:"position_id"`
+	ID          uint64 `json:"id"`
+	Description string `json:"description"`
+	Scout 		string `json:"scout"`
+	Points      float64 `json:"points"`
+	Positions   []Position `json:"positions"`
 }
 
 type Scouts []Scout
@@ -38,7 +48,18 @@ func (s *Scout) PublicScout() *PublicScout {
 		ID:          s.ID,
 		Description: s.Description,
 		Points:      s.Points,
-		PositionID:  s.PositionId,
+		Scout: 		 s.Scout,
+		Positions:   s.Positions,
+	}
+}
+
+func (s *RequestScout) ToScout() *Scout {
+	return &Scout{
+		ID:          s.ID,
+		Description: s.Description,
+		Scout:       s.Scout,
+		Points:      s.Points,
+		Positions:   nil,
 	}
 }
 

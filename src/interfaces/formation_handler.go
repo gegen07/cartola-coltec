@@ -25,11 +25,17 @@ func (handler *FormationHandler) GetAllFormations(w http.ResponseWriter, r *http
 	if r.Method != http.MethodGet {
 		return errors.NewHTTPError(nil, http.StatusMethodNotAllowed, "Method Not Allowed")
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 
+	key := r.FormValue("page")
+	page, err := strconv.Atoi(key)
+
+	if err != nil {
+		return errors.NewHTTPError(err, 400, "Invalid Parameter")
+	}
+
 	var formations entity.Formations
-	formations, err := handler.formationApplication.GetAll()
+	formations, err = handler.formationApplication.GetAll(r.Context(), page)
 
 	if err != nil {
 		return fmt.Errorf("DB error: %v", err)
@@ -52,7 +58,7 @@ func (handler *FormationHandler) GetFormationById(w http.ResponseWriter, r *http
 		return errors.NewHTTPError(err, 400, "Invalid JSON")
 	}
 
-	formation, err := handler.formationApplication.GetByID(formationId)
+	formation, err := handler.formationApplication.GetByID(r.Context(), formationId)
 
 	if err != nil {
 		return fmt.Errorf("DB error: %v", err)
@@ -75,7 +81,7 @@ func (handler *FormationHandler) Insert(w http.ResponseWriter, r *http.Request) 
 		return errors.NewHTTPError(err, 400, "Invalid JSON")
 	}
 
-	f, err := handler.formationApplication.Insert(&formation)
+	f, err := handler.formationApplication.Insert(r.Context(), &formation)
 
 	if err != nil {
 		return fmt.Errorf("DB error: %v", err)
@@ -106,7 +112,7 @@ func (handler *FormationHandler) Update(w http.ResponseWriter, r *http.Request) 
 		return errors.NewHTTPError(err, 400, "Invalid JSON")
 	}
 
-	f, err := handler.formationApplication.Update(&formation)
+	f, err := handler.formationApplication.Update(r.Context(), &formation)
 
 	if err != nil {
 		return fmt.Errorf("DB error: %v", err)
@@ -129,7 +135,7 @@ func (handler *FormationHandler) Delete(w http.ResponseWriter, r *http.Request) 
 		return errors.NewHTTPError(err, 400, "Invalid JSON")
 	}
 
-	err = handler.formationApplication.Delete(formationId)
+	err = handler.formationApplication.Delete(r.Context(), formationId)
 
 	if err != nil {
 		return fmt.Errorf("DB error: %v", err)

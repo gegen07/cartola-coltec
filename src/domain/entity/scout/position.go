@@ -4,17 +4,23 @@ import "time"
 
 // Position struct represents the position of the player in a team
 type Position struct {
-	ID         	uint64 `gorm:"primary_key;auto_increment; column:id" json:"id"`
-	Description string `gorm:"not null" json:"description"`
-	Scouts 		[]Scout `gorm:"foreignkey:PositionID" json:"scouts"`
-	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"updated_at"`
+	ID         	uint64
+	Description string
+	Scouts 		[]Scout
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type RequestPosition struct {
+	ID         	uint64 `json:"id"`
+	Description string `json:"description"`
+	ScoutsID  	[]uint64 `json:"scouts_id"`
 }
 
 type PublicPosition struct {
-	ID          uint64 `gorm:"primary_key;auto_increment" json:"id"`
-	Description string `gorm:"not null" json:"description"`
-	Scouts 		[]Scout `gorm:"foreignkey:position_id" json:"scouts"`
+	ID          uint64 `json:"id"`
+	Description string `json:"description"`
+	Scouts 		[]Scout `json:"scouts"`
 }
 
 type Positions []Position
@@ -34,6 +40,13 @@ func (p *Position) PublicPosition() *PublicPosition {
 		ID: p.ID,
 		Description: p.Description,
 		Scouts: p.Scouts,
+	}
+}
+
+func (p *RequestPosition) ToPosition() *Position {
+	return &Position{
+		ID:          p.ID,
+		Description: p.Description,
 	}
 }
 

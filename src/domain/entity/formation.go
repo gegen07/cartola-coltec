@@ -6,12 +6,12 @@ import (
 
 // Formation is the schema of game team
 type Formation struct {
-	ID         uint64 `gorm:"primary_key;auto_increment" json:"id"`
-	Goalkeeper uint64 `gorm:"not null" json:"goalkeeper"`
-	Attackers  uint64 `gorm:"not null" json:"attackers"`
-	Defenders  uint64 `gorm:"not null" json:"defenders"`
-	CreatedAt time.Time  `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt time.Time  `gorm:"default:CURRENT_TIMESTAMP" json:"updated_at"`
+	ID         uint64 `json:"id"`
+	Goalkeeper uint64 `json:"goalkeeper"`
+	Attackers  uint64 `json:"attackers"`
+	Defenders  uint64 `json:"defenders"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
 }
 
 type PublicFormation struct {

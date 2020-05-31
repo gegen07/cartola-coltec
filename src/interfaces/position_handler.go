@@ -28,9 +28,15 @@ func (handler *PositionHandler) GetAll(w http.ResponseWriter, r *http.Request) e
 
 	w.Header().Set("Content-Type", "application/json")
 
-	var positions scout.Positions
+	key := r.FormValue("page")
+	page, err := strconv.Atoi(key)
 
-	positions, err := handler.PositionApplication.GetAll()
+	if err != nil {
+		return errors.NewHTTPError(err, 400, "Invalid Parameter")
+	}
+
+	var positions scout.Positions
+	positions, err = handler.PositionApplication.GetAll(r.Context(), page)
 
 	if err != nil {
 		return fmt.Errorf("DB error: %v", err)
@@ -49,7 +55,7 @@ func (handler *PositionHandler) Insert(w http.ResponseWriter, r *http.Request) e
 
 	w.Header().Set("Content-Type", "application/json")
 
-	var position scout.Position
+	var position scout.RequestPosition
 
 	err := json.NewDecoder(r.Body).Decode(&position)
 
@@ -57,14 +63,13 @@ func (handler *PositionHandler) Insert(w http.ResponseWriter, r *http.Request) e
 		return errors.NewHTTPError(err, http.StatusBadRequest, "Invalid JSON")
 	}
 
-	p, err := handler.PositionApplication.Insert(&position)
+	p, err := handler.PositionApplication.Insert(r.Context(), &position)
 
 	if err != nil {
 		return fmt.Errorf("DB error: %v", err)
 	}
 
 	json.NewEncoder(w).Encode(p.PublicPosition())
-	w.WriteHeader(http.StatusCreated)
 
 	return nil
 }
@@ -84,7 +89,7 @@ func (handler *PositionHandler) GetByID(w http.ResponseWriter, r *http.Request) 
 		return errors.NewHTTPError(err, http.StatusBadRequest, "Invalid JSON")
 	}
 
-	position, err := handler.PositionApplication.GetById(id)
+	position, err := handler.PositionApplication.GetById(r.Context(), id)
 
 	if err != nil {
 		return fmt.Errorf("DB Error: %v", err)
@@ -118,7 +123,7 @@ func (handler *PositionHandler) Update(w http.ResponseWriter, r *http.Request) e
 		return errors.NewHTTPError(err, http.StatusBadRequest, "Invalid JSON")
 	}
 
-	p, err := handler.PositionApplication.Update(&position)
+	p, err := handler.PositionApplication.Update(r.Context(), &position)
 
 	if err != nil {
 		return fmt.Errorf("DB Error: %v", err)
@@ -145,7 +150,7 @@ func (handler PositionHandler) Delete(w http.ResponseWriter, r *http.Request) er
 		return errors.NewHTTPError(err, http.StatusBadRequest, "Invalid JSON")
 	}
 
-	err = handler.PositionApplication.Delete(id)
+	err = handler.PositionApplication.Delete(r.Context(), id)
 
 	if err != nil {
 		return fmt.Errorf("DB Error: %v", err)
